@@ -17,6 +17,66 @@ const rewardPremiumContract = new web3.eth.Contract(
 	process.env.REWARD_PREMIUM_CONTRACT
 );
 
+exports.getRewardFromServer = async function(currentTime) {
+	try {
+		// const currentTime = Math.floor(Date.now() / 1000);
+		const last10Days = currentTime - (86400 * 10);
+		// const response = await axios.get(`process.env.GET_REWARD_API?${time}=${currentTime}`);
+		// const data = response.data.$values;
+
+		// Fake data start
+		let i = 0;
+		let data = [];
+		while(i < 10) {
+			data.push({
+				walletId: web3.eth.accounts.create().address,
+				type: (i % 2 === 0) ? 'free' : 'paid',
+				reward: 100
+			})
+			i += 1;
+		}
+		// Fake data end
+
+		let users = await Promise.all(data.map(async (user) => {
+			if (user.type === 'paid') {
+				return {
+					timestamp: currentTime,
+					address: user.walletId,
+					reward: user.reward,
+					type: user.type
+				}
+			}
+
+			let rewards = await Reward.find({timestamp: {$gte: last10Days}});
+			let prevReward = 0;
+
+			if (rewards.length > 0) {
+				prevReward = rewards.reduce((prev, next) => {
+					console.log(prev.reward);
+					console.log(next.reward);
+					return parseInt(prev.reward) + parseInt(next.reward);
+				})
+			}
+
+			return {
+				timestamp: currentTime,
+				address: user.walletId,
+				reward: user.reward + prevReward,
+				type: user.type
+			}
+		}));
+
+		await Reward.insertMany(users);
+
+		console.log(users);
+
+		return users;
+	} catch(error) {
+		console.log(error);
+		return [];
+	}
+}
+
 exports.getRewardFreeProof = async function(address, timestamp) {
 	try {
 		let users = await Reward.find({timestamp});
@@ -43,12 +103,9 @@ exports.getRewardFreeProof = async function(address, timestamp) {
 
 exports.updateRewardFreeRoot = async function() {
 	try {
-		// const response = await axios.get(process.env.GET_REWARD_API);
-		// const data = response.data.$values;
-
 		const currentTime = Math.floor(Date.now() / 1000);
-
-		const data = require("../mockups/reward.json").users;
+		const response = await axios.get(`process.env.GET_REWARD_API?${time}=${currentTime}`);
+		// const data = response.data.$values;
 
 		const users = [];
 		data.forEach((user) => {

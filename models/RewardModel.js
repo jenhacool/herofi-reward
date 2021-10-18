@@ -15,6 +15,10 @@ var RewardSchema = new Schema({
     type: String,
     required: true,
   },
+  type: {
+    type: String,
+    required: true
+  },
   claimed: {
     type: Boolean,
     required: true,
