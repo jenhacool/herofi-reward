@@ -1,0 +1,12 @@
+{
+  "users": [
+    {
+      "address": "0x2b0b0B708BBF29D45E2D75b60131Cd0ec320632b",
+      "reward": "1000"
+    },
+    {
+      "address": "0x5Dc272FbD198838E99DFaDe7Bf9827DcE5869a65",
+      "reward": "2000"
+    }
+  ]
+}
