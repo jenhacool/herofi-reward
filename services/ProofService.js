@@ -25,50 +25,29 @@ exports.getRewardFromServer = async function(currentTime) {
 		// const data = response.data.$values;
 
 		// Fake data start
-		let i = 0;
 		let data = [];
-		while(i < 10) {
-			data.push({
-				walletId: web3.eth.accounts.create().address,
-				type: (i % 2 === 0) ? 'free' : 'paid',
-				reward: 100
-			})
-			i += 1;
-		}
+		data.push({
+			walletId: "0x05ea9701d37ca0db25993248e1d8461A8b50f24a",
+			type: "paid",
+			reward: 100
+		})
+		data.push({
+			walletId: "0xC703F2c6C13F71B359f41Ad10e522e74F0bE6295",
+			type: "free",
+			reward: 100
+		})
 		// Fake data end
 
-		let users = await Promise.all(data.map(async (user) => {
-			if (user.type === 'paid') {
-				return {
-					timestamp: currentTime,
-					address: user.walletId,
-					reward: user.reward,
-					type: user.type
-				}
-			}
-
-			let rewards = await Reward.find({timestamp: {$gte: last10Days}});
-			let prevReward = 0;
-
-			if (rewards.length > 0) {
-				prevReward = rewards.reduce((prev, next) => {
-					console.log(prev.reward);
-					console.log(next.reward);
-					return parseInt(prev.reward) + parseInt(next.reward);
-				})
-			}
-
+		let users = data.map((user) => {
 			return {
 				timestamp: currentTime,
 				address: user.walletId,
-				reward: user.reward + prevReward,
+				reward: user.reward,
 				type: user.type
 			}
-		}));
+		});
 
 		await Reward.insertMany(users);
-
-		console.log(users);
 
 		return users;
 	} catch(error) {
@@ -100,6 +79,33 @@ exports.getRewardFreeProof = async function(address, timestamp) {
 		return null;
 	}
 };
+
+exports.updateRewardRoot = async function() {
+	try {
+		const currentTime = Math.floor(Date.now() / 1000);
+		const users = await getRewardFromServer(currentTime);
+		const data = await Promise.all(users.map(async (user) => {
+			if (user.type === 'paid') {
+				return {
+					address: user.address,
+					reward: user.reward,
+				}
+			}
+
+			if (user.type === 'free') {
+				let prevRewards = await Reward.find({timestamp: {$gte: currentTime - (86400 * 10)}, address: user.address });
+				let totalReward = 0;
+				if (prevRewards) {
+					prevRewards.forEach((prev) => {
+						totalReward += parseInt(prev.reward);
+					});
+				}
+			}
+		}));
+	} catch(error) {
+
+	}
+}
 
 exports.updateRewardFreeRoot = async function() {
 	try {
