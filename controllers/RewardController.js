@@ -17,10 +17,10 @@ exports.getReward = [
 	}
 ];
 
-exports.updateRewardFreeRoot = [
+exports.updateRewardRoot = [
 	async function (req, res) {
 		try {
-			let update = await ProofService.updateRewardFreeRoot();
+			let update = await ProofService.updateRewardRoot();
 			if (update) {
 				return apiResponse.successResponseWithData(res, "Operation success", []);
 			}
@@ -50,22 +50,6 @@ exports.getRewardFreeProof = [
 
 			return apiResponse.ErrorResponse(res, "Wrong data");
 		} catch (err) {
-			return apiResponse.ErrorResponse(res, err);
-		}
-	}
-];
-
-exports.updateRewardPremiumRoot = [
-	async function (req, res) {
-		try {
-			let update = await ProofService.updateRewardPremiumRoot();
-			if (update) {
-				return apiResponse.successResponseWithData(res, "Operation success", []);
-			}
-
-			return apiResponse.ErrorResponse(res);
-		} catch (err) {
-			//throw error in json response with status 500. 
 			return apiResponse.ErrorResponse(res, err);
 		}
 	}

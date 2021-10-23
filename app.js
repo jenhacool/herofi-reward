@@ -64,14 +64,6 @@ app.use((err, req, res) => {
 
 // job.start();
 
-(async function() {
-	var Reward = require("./models/RewardModel");
-	await Reward.deleteMany();
-	let time = Math.floor(Date.now() / 1000);
-	await ProofService.getRewardFromServer(time - 86400 * 12);
-	await ProofService.getRewardFromServer(time - 86400 * 10);
-	await ProofService.getRewardFromServer(time - 86400 * 2);
-	await ProofService.getRewardFromServer(time);
-})();
+listenEvents();
 
 module.exports = app;

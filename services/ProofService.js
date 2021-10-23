@@ -17,26 +17,10 @@ const rewardPremiumContract = new web3.eth.Contract(
 	process.env.REWARD_PREMIUM_CONTRACT
 );
 
-exports.getRewardFromServer = async function(currentTime) {
+const getRewardFromServer = async function(currentTime) {
 	try {
-		// const currentTime = Math.floor(Date.now() / 1000);
-		const last10Days = currentTime - (86400 * 10);
-		// const response = await axios.get(`process.env.GET_REWARD_API?${time}=${currentTime}`);
-		// const data = response.data.$values;
-
-		// Fake data start
-		let data = [];
-		data.push({
-			walletId: "0x05ea9701d37ca0db25993248e1d8461A8b50f24a",
-			type: "paid",
-			reward: 100
-		})
-		data.push({
-			walletId: "0xC703F2c6C13F71B359f41Ad10e522e74F0bE6295",
-			type: "free",
-			reward: 100
-		})
-		// Fake data end
+		const response = await axios.get(`${process.env.GET_REWARD_API}?time=${currentTime}`);
+		const data = response.data.data.$values;
 
 		let users = data.map((user) => {
 			return {
@@ -44,7 +28,7 @@ exports.getRewardFromServer = async function(currentTime) {
 				address: user.walletId,
 				reward: user.reward,
 				type: user.type
-			}
+			};
 		});
 
 		await Reward.insertMany(users);
@@ -54,83 +38,35 @@ exports.getRewardFromServer = async function(currentTime) {
 		console.log(error);
 		return [];
 	}
-}
-
-exports.getRewardFreeProof = async function(address, timestamp) {
-	try {
-		let users = await Reward.find({timestamp});
-		let leaves = users.map(user => Web3Util.soliditySha3(
-			{type: "address", value: user.address},
-			{type: "uint256", value: web3.utils.toWei(user.reward, "ether")},
-		));
-		let tree = new MerkleTree(leaves, keccak256, { sort: true });
-		let user = await Reward.findOne({address, timestamp});
-		console.log(user.address);
-		console.log(user.reward);
-		console.log(user.timestamp);
-		let leaf = Web3Util.soliditySha3(
-			{type: "address", value: user.address},
-			{type: "uint256", value: web3.utils.toWei(user.reward, "ether")},
-		);
-		let proof = tree.getHexProof(leaf);
-		return proof;
-	} catch(error) {
-		console.log(error);
-		return null;
-	}
 };
 
-exports.updateRewardRoot = async function() {
+const updateRewardFreeRoot = async function(currentTime, data) {
 	try {
-		const currentTime = Math.floor(Date.now() / 1000);
-		const users = await getRewardFromServer(currentTime);
-		const data = await Promise.all(users.map(async (user) => {
-			if (user.type === 'paid') {
-				return {
-					address: user.address,
-					reward: user.reward,
-				}
-			}
-
-			if (user.type === 'free') {
-				let prevRewards = await Reward.find({timestamp: {$gte: currentTime - (86400 * 10)}, address: user.address });
+		const users = await Promise.all(data.map(async (user) => {
+			if (user.type === "free") {
+				let prevRewards = await Reward.find({timestamp: {$gte: currentTime - (86400 * 10)}, address: user.address, claimed: false});
 				let totalReward = 0;
 				if (prevRewards) {
 					prevRewards.forEach((prev) => {
 						totalReward += parseInt(prev.reward);
 					});
 				}
+				return {
+					address: user.address,
+					reward: parseInt(totalReward),
+				};
 			}
 		}));
-	} catch(error) {
-
-	}
-}
-
-exports.updateRewardFreeRoot = async function() {
-	try {
-		const currentTime = Math.floor(Date.now() / 1000);
-		const response = await axios.get(`process.env.GET_REWARD_API?${time}=${currentTime}`);
-		// const data = response.data.$values;
-
-		const users = [];
-		data.forEach((user) => {
-			users.push({
-				address: user.address,
-				reward: user.reward,
-			});
-		});
 
 		const leaves = users.map(user => Web3Util.soliditySha3(
 			{type: "address", value: user.address},
-			{type: "uint256", value: web3.utils.toWei(user.reward, "ether")},
+			{type: "uint256", value: web3.utils.toWei(`${user.reward}`, "ether")},
 		));
 		
 		const tree = new MerkleTree(leaves, keccak256, { sort: true });
 		const root = tree.getHexRoot();
 
-		console.log("root", root);
-		console.log("timestamp", currentTime);
+		console.log(currentTime, root);
 
 		const privateKey = process.env.REWARD_PRIVATE_KEY;
 		const transaction = rewardFreeContract.methods.updateMerkleRoot(currentTime, root);
@@ -145,16 +81,6 @@ exports.updateRewardFreeRoot = async function() {
 		if (!receipt.status) {
 			return false;
 		}
-		
-		let inserts = users.map(user => {
-			return {
-				address: user.address,
-				reward: user.reward,
-				timestamp: currentTime
-			};
-		});
-		
-		await Reward.insertMany(inserts);
 
 		return true;
 	} catch(error) {
@@ -163,37 +89,10 @@ exports.updateRewardFreeRoot = async function() {
 	}
 };
 
-exports.getRewardPremiumProof = async function(address, timestamp) {
+const updateRewardPremiumRoot = async function(currentTime, data) {
 	try {
-		let users = await Reward.find({timestamp});
-		let leaves = users.map(user => Web3Util.soliditySha3(
-			{type: "address", value: user.address},
-			{type: "uint256", value: web3.utils.toWei(user.reward, "ether")},
-		));
-		let tree = new MerkleTree(leaves, keccak256, { sort: true });
-		let user = await Reward.findOne({address, timestamp});
-		let leaf = Web3Util.soliditySha3(
-			{type: "address", value: user.address},
-			{type: "uint256", value: web3.utils.toWei(user.reward, "ether")},
-		);
-		let proof = tree.getHexProof(leaf);
-		return proof;
-	} catch(error) {
-		console.log(error);
-		return null;
-	}
-};
-
-exports.updateRewardPremiumRoot = async function() {
-	try {
-		// const response = await axios.get(process.env.GET_REWARD_API);
-		// const data = response.data.$values;
-
-		const currentTime = Math.floor(Date.now() / 1000);
-
-		const data = require("../mockups/reward.json").users;
-
 		const users = [];
+
 		data.forEach((user) => {
 			users.push({
 				address: user.address,
@@ -203,14 +102,13 @@ exports.updateRewardPremiumRoot = async function() {
 
 		const leaves = users.map(user => Web3Util.soliditySha3(
 			{type: "address", value: user.address},
-			{type: "uint256", value: web3.utils.toWei(user.reward, "ether")},
+			{type: "uint256", value: web3.utils.toWei(`${user.reward}`, "ether")},
 		));
 		
 		const tree = new MerkleTree(leaves, keccak256, { sort: true });
 		const root = tree.getHexRoot();
 
-		console.log("root", root);
-		console.log("timestamp", currentTime);
+		console.log(currentTime, root);
 
 		const privateKey = process.env.REWARD_PRIVATE_KEY;
 		const transaction = rewardPremiumContract.methods.updateMerkleRoot(currentTime, root);
@@ -225,20 +123,94 @@ exports.updateRewardPremiumRoot = async function() {
 		if (!receipt.status) {
 			return false;
 		}
-		
-		let inserts = users.map(user => {
-			return {
-				address: user.address,
-				reward: user.reward,
-				timestamp: currentTime
-			};
-		});
-		
-		await Reward.insertMany(inserts);
 
 		return true;
 	} catch(error) {
 		console.log(error);
 		return false;
+	}
+};
+
+exports.updateRewardRoot = async function() {
+	try {
+		const currentTime = Math.floor(Date.now() / 1000);
+		const users = await getRewardFromServer(currentTime);
+		const freeUsers = users.filter(user => user.type === "free");
+		const paidUsers = users.filter(user => user.type === "paid");
+
+		await updateRewardFreeRoot(currentTime, freeUsers);
+		await updateRewardPremiumRoot(currentTime, paidUsers);
+
+		return true;
+	} catch(error) {
+		console.log(error);
+		return false;
+	}
+};
+
+exports.getRewardFreeProof = async function(address, timestamp) {
+	try {
+		const raw = await Reward.find({timestamp, type: "free"});
+		const users = await Promise.all(raw.map(async (user) => {
+			if (user.type === "free") {
+				let prevRewards = await Reward.find({timestamp: {$gte: timestamp - (86400 * 10)}, address: user.address, claimed: false});
+				let totalReward = 0;
+				if (prevRewards) {
+					prevRewards.forEach((prev) => {
+						totalReward += parseInt(prev.reward);
+					});
+				}
+				return {
+					address: user.address,
+					reward: parseInt(totalReward),
+				};
+			}
+		}));
+		console.log(users);
+		let leaves = users.map(user => Web3Util.soliditySha3(
+			{type: "address", value: user.address},
+			{type: "uint256", value: web3.utils.toWei(`${user.reward}`, "ether")},
+		));
+		let tree = new MerkleTree(leaves, keccak256, { sort: true });
+		console.log(tree.getHexRoot());
+		let prevRewards = await Reward.find({timestamp: {$gte: timestamp - (86400 * 10)}, address: address, claimed: false});
+		let totalReward = 0;
+		if (prevRewards) {
+			prevRewards.forEach((prev) => {
+				totalReward += parseInt(prev.reward);
+			});
+		}
+		console.log(address, totalReward, timestamp);
+		let leaf = Web3Util.soliditySha3(
+			{type: "address", value: address},
+			{type: "uint256", value: web3.utils.toWei(`${totalReward}`, "ether")},
+		);
+		let proof = tree.getHexProof(leaf);
+		console.log(proof);
+		return proof;
+	} catch(error) {
+		console.log(error);
+		return null;
+	}
+};
+
+exports.getRewardPremiumProof = async function(address, timestamp) {
+	try {
+		let users = await Reward.find({timestamp});
+		let leaves = users.map(user => Web3Util.soliditySha3(
+			{type: "address", value: user.address},
+			{type: "uint256", value: web3.utils.toWei(`${user.reward}`, "ether")},
+		));
+		let tree = new MerkleTree(leaves, keccak256, { sort: true });
+		let user = await Reward.findOne({address, timestamp});
+		let leaf = Web3Util.soliditySha3(
+			{type: "address", value: user.address},
+			{type: "uint256", value: web3.utils.toWei(`${user.reward}`, "ether")},
+		);
+		let proof = tree.getHexProof(leaf);
+		return proof;
+	} catch(error) {
+		console.log(error);
+		return null;
 	}
 };
