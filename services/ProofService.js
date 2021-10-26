@@ -17,10 +17,59 @@ const rewardPremiumContract = new web3.eth.Contract(
 	process.env.REWARD_PREMIUM_CONTRACT
 );
 
+// Real data
+// const getRewardFromServer = async function(currentTime) {
+// 	try {
+// 		const response = await axios.get(`${process.env.GET_REWARD_API}?time=${currentTime}`);
+// 		const data = response.data.data.$values;
+
+// 		let users = data.map((user) => {
+// 			return {
+// 				timestamp: currentTime,
+// 				address: user.walletId,
+// 				reward: user.reward,
+// 				type: user.type
+// 			};
+// 		});
+
+// 		await Reward.insertMany(users);
+
+// 		return users;
+// 	} catch(error) {
+// 		console.log(error);
+// 		return [];
+// 	}
+// };
+
+// Fake data
 const getRewardFromServer = async function(currentTime) {
 	try {
 		const response = await axios.get(`${process.env.GET_REWARD_API}?time=${currentTime}`);
 		const data = response.data.data.$values;
+		let users = [];
+		let i = 0;
+
+		while(i < 10) {
+			users.push({
+				timestamp: currentTime - (86400 * i),
+				address: "0x05ea9701d37ca0db25993248e1d8461A8b50f24a",
+				reward: 1000,
+				type: "free"
+			})
+			users.push({
+				timestamp: currentTime - (86400 * i),
+				address: "0x285F11E78923Cb02302E6Fbc92d14744eFe50018",
+				reward: 1000,
+				type: "free"
+			})
+			users.push({
+				timestamp: currentTime - (86400 * i),
+				address: "0x1D0291245E954c11B481f713354D79B1747cAa0E",
+				reward: 1000,
+				type: "free"
+			})
+			i += 1;
+		}
 
 		let users = data.map((user) => {
 			return {
