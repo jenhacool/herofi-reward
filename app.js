@@ -57,12 +57,11 @@ app.use((err, req, res) => {
 	}
 });
 
-// var job = new CronJob("0 0 * * *", function() {
-// 	ProofService.updateRewardFreeRoot();
-// 	ProofService.updateRewardPremiumRoot();
-// });
+var job = new CronJob("0 1 * * *", function() {
+	ProofService.updateRewardRoot();
+});
 
-// job.start();
+job.start();
 
 listenEvents();
 

@@ -5,7 +5,7 @@ var router = express.Router();
 
 router.get("/:address", RewardController.getReward);
 
-router.post("/root", RewardController.updateRewardRoot);
+// router.post("/root", RewardController.updateRewardRoot);
 
 router.post("/reward_free/proof", RewardController.getRewardFreeProof);
 
