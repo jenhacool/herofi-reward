@@ -17,6 +17,11 @@ exports.getReward = [
 			let newest = await Reward.findOne({}, {}, {sort: {"timestamp": -1}});
 			let latestTimestamp = newest ? newest.timestamp : currentTime;
 			let rewards = await Reward.find({timestamp: {$gte: currentTime - (86400 * 12)}, address}, {}, {sort: {"timestamp": -1}});
+
+			if (rewards.length == 0) {
+				return apiResponse.successResponseWithData(res, "Operation success", {rewards});
+			}
+
 			let find = rewards.find(reward => reward.timestamp == latestTimestamp);
 
 			if (find) {
@@ -29,12 +34,13 @@ exports.getReward = [
 				"address": address,
 				"reward": "0",
 				"type": rewards[0].type
-			}
+			};
 
 			rewards = [latestReward].concat(rewards);
 
 			return apiResponse.successResponseWithData(res, "Operation success", {rewards});
 		} catch (err) {
+			console.log(err);
 			return apiResponse.ErrorResponse(res, err);
 		}
 	}

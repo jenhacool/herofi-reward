@@ -4,6 +4,7 @@ const keccak256 = require("keccak256");
 const axios = require("axios");
 const Web3 = require("web3");
 const Reward = require("../models/RewardModel");
+const RewardDup = require("../models/RewardDupModel");
 
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.WEB3_PROVIDER));
 
@@ -192,12 +193,13 @@ const updateRewardPremiumRoot = async function(currentTime, data) {
 exports.updateRewardRoot = async function() {
 	try {
 		const currentTime = Math.floor(Date.now() / 1000);
-		// const currentTime = 1635728400;
+		const currentData = await Reward.find();
 		const users = await getRewardFromServer(currentTime);
-		const freeUsers = await Reward.find({timestamp: {$gt: currentTime - (86400 * 10)}, type: "free"});
-		console.log(freeUsers);
-		const paidUsers = await Reward.find({timestamp: currentTime, type: "paid"});
-		console.log(paidUsers);
+		const newData = currentData.concat(users);
+		await RewardDup.deleteMany();
+		await RewardDup.insertMany(newData);
+		const freeUsers = await RewardDup.find({timestamp: {$gt: currentTime - (86400 * 10)}, type: "free"});
+		const paidUsers = await RewardDup.find({timestamp: currentTime, type: "paid"});
 
 		await updateRewardFreeRoot(currentTime, freeUsers);
 		await updateRewardPremiumRoot(currentTime, paidUsers);
@@ -211,10 +213,10 @@ exports.updateRewardRoot = async function() {
 
 exports.getRewardFreeProof = async function(address, timestamp) {
 	try {
-		const raw = await Reward.find({timestamp: {$gt: timestamp - (86400 * 10)}, type: "free"});
+		const raw = await RewardDup.find({timestamp: {$gt: timestamp - (86400 * 10)}, type: "free"});
 		const users = await Promise.all(raw.map(async (user) => {
 			if (user.type === "free") {
-				let prevRewards = await Reward.find({timestamp: {$gt: timestamp - (86400 * 10)}, address: user.address, claimed: false});
+				let prevRewards = await RewardDup.find({timestamp: {$gt: timestamp - (86400 * 10)}, address: user.address, claimed: false});
 				let totalReward = 0;
 				if (prevRewards) {
 					prevRewards.forEach((prev) => {
@@ -233,7 +235,7 @@ exports.getRewardFreeProof = async function(address, timestamp) {
 		));
 		let tree = new MerkleTree(leaves, keccak256, { sort: true });
 		console.log(tree.getHexRoot());
-		let prevRewards = await Reward.find({timestamp: {$gt: timestamp - (86400 * 10)}, address: address, claimed: false});
+		let prevRewards = await RewardDup.find({timestamp: {$gt: timestamp - (86400 * 10)}, address: address, claimed: false});
 		let totalReward = 0;
 		if (prevRewards) {
 			prevRewards.forEach((prev) => {
@@ -256,14 +258,14 @@ exports.getRewardFreeProof = async function(address, timestamp) {
 
 exports.getRewardPremiumProof = async function(address, timestamp) {
 	try {
-		let users = await Reward.find({timestamp, type: "paid"});
+		let users = await RewardDup.find({timestamp, type: "paid"});
 		let leaves = users.map(user => Web3Util.soliditySha3(
 			{type: "address", value: user.address},
 			{type: "uint256", value: web3.utils.toWei(`${user.reward}`, "ether")},
 		));
 		let tree = new MerkleTree(leaves, keccak256, { sort: true });
 		console.log(tree.getHexRoot());
-		let user = await Reward.findOne({address, timestamp});
+		let user = await RewardDup.findOne({address, timestamp});
 		let leaf = Web3Util.soliditySha3(
 			{type: "address", value: user.address},
 			{type: "uint256", value: web3.utils.toWei(`${user.reward}`, "ether")},
