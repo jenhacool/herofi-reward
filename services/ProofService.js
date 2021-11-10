@@ -5,6 +5,7 @@ const axios = require("axios");
 const Web3 = require("web3");
 const Reward = require("../models/RewardModel");
 const RewardDup = require("../models/RewardDupModel");
+const RewardLog = require("../models/RewardLogModel");
 
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.WEB3_PROVIDER));
 
@@ -42,6 +43,34 @@ const getRewardFromServer = async function(currentTime) {
 		return [];
 	}
 };
+
+// const getRewardFromServer = async function(currentTime) {
+// 	try {
+// 		const response = await axios.get(`${process.env.GET_REWARD_API}&time=${currentTime}`);
+// 		const data = response.data.$values;
+
+// 		let free = data.filter((user) => {
+// 			return user.type == "free";
+// 		});
+
+// 		let users = free.map((user) => {
+// 			return {
+// 				timestamp: currentTime,
+// 				address: web3.utils.toChecksumAddress(user.walletId),
+// 				reward: user.reward,
+// 				type: user.type
+// 			};
+// 		});
+
+// 		await Reward.deleteMany({timestamp: currentTime, type: "free"});
+// 		await Reward.insertMany(users);
+
+// 		return users;
+// 	} catch(error) {
+// 		console.log(error);
+// 		return [];
+// 	}
+// };
 
 // Fake data
 // const getRewardFromServer = async function(currentTime) {
@@ -190,9 +219,38 @@ const updateRewardPremiumRoot = async function(currentTime, data) {
 	}
 };
 
+const resetRewardClaimedToday = async function() {
+	try {
+		const rewardManagerContract = new web3.eth.Contract(
+			require("../abis/RewardManager.json"),
+			process.env.REWARD_MANAGER_CONTRACT
+		);
+
+		const privateKey = process.env.REWARD_PRIVATE_KEY;
+		const transaction = rewardManagerContract.methods.setRewardClaimedToday(0);
+		const options = {
+			to: transaction._parent._address,
+			data: transaction.encodeABI(),
+			gas: await transaction.estimateGas({from: web3.utils.toChecksumAddress(process.env.REWARD_OWNER_ADDRESS)}),
+		};
+		const signed  = await web3.eth.accounts.signTransaction(options, privateKey);
+		const receipt = await web3.eth.sendSignedTransaction(signed.rawTransaction);
+
+		if (!receipt.status) {
+			return false;
+		}
+
+		return true;
+	} catch (error) {
+		console.log(error);
+		return false;
+	}
+}
+
 exports.updateRewardRoot = async function() {
 	try {
 		const currentTime = Math.floor(Date.now() / 1000);
+		// const currentTime = 1636074000;
 		const currentData = await Reward.find();
 		const users = await getRewardFromServer(currentTime);
 		const newData = currentData.concat(users);
@@ -203,6 +261,50 @@ exports.updateRewardRoot = async function() {
 
 		await updateRewardFreeRoot(currentTime, freeUsers);
 		await updateRewardPremiumRoot(currentTime, paidUsers);
+		await resetRewardClaimedToday();
+
+		return true;
+	} catch(error) {
+		console.log(error);
+		return false;
+	}
+};
+
+exports.updateDataReward = async function() {
+	try {
+		let claimed = await RewardLog.find({timestamp: 1635901200, claimed: true});
+		console.log(claimed.length);
+		await Promise.all(claimed.map(async (data) => {
+			await Reward.findOneAndUpdate({timestamp: 1635901200, address: data.address}, {claimed: true, history: data.history})
+		}));
+		console.log("Done");
+	} catch(error) {
+		console.log(error);
+		return false;
+	}
+}
+
+exports.fixRewardRoot = async function() {
+	try {
+		// const currentTime = Math.floor(Date.now() / 1000);
+		// const currentTime = 1635728400;
+		// const currentTime = 1635814800;
+		// const currentTime = 1635901200;
+		const currentData = await Reward.find();
+		const users = await getRewardFromServer(currentTime);
+		const newData = currentData.concat(users);
+		await RewardDup.deleteMany();
+		await RewardDup.insertMany(newData);
+		const freeUsers = await RewardDup.find({timestamp: {$gt: currentTime - (86400 * 10)}, type: "free"});
+		const paidUsers = await RewardDup.find({timestamp: currentTime, type: "paid"});
+
+		await updateRewardFreeRoot(currentTime, freeUsers);
+
+		console.log("Done free")
+
+		await updateRewardPremiumRoot(currentTime, paidUsers);
+
+		console.log("Done premium");
 
 		return true;
 	} catch(error) {
