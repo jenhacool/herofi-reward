@@ -5,10 +5,10 @@ var router = express.Router();
 
 router.get("/:address", RewardController.getReward);
 
+router.post("/get_proof", RewardController.getRewardProof);
+
+router.post("/get_proofs", RewardController.getRewardProofs);
+
 router.post("/root", RewardController.updateRewardRoot);
-
-router.post("/reward_free/proof", RewardController.getRewardFreeProof);
-
-router.post("/reward_premium/proof", RewardController.getRewardPremiumProof);
 
 module.exports = router;

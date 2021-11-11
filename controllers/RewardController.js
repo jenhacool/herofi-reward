@@ -62,7 +62,7 @@ exports.updateRewardRoot = [
 	}
 ];
 
-exports.getRewardFreeProof = [
+exports.getRewardProof = [
 	async function (req, res) {
 		try {
 			let { address, timestamp } = req.body;
@@ -71,7 +71,7 @@ exports.getRewardFreeProof = [
 				return apiResponse.ErrorResponse(res, "Missing request data");
 			}
 
-			let proof = await ProofService.getRewardFreeProof(address, timestamp);
+			let proof = await ProofService.getRewardProof(address, timestamp);
 
 			if (proof.length) {
 				return apiResponse.successResponseWithData(res, "Operation success", {proof});
@@ -84,16 +84,16 @@ exports.getRewardFreeProof = [
 	}
 ];
 
-exports.getRewardPremiumProof = [
+exports.getRewardProofs = [
 	async function (req, res) {
 		try {
-			let { address, timestamp } = req.body;
+			let { data } = req.body;
 
-			if (!address || !timestamp) {
+			if (!data) {
 				return apiResponse.ErrorResponse(res, "Missing request data");
 			}
 
-			let proof = await ProofService.getRewardPremiumProof(address, timestamp);
+			let proof = await ProofService.getRewardProofs(data);
 
 			if (proof.length) {
 				return apiResponse.successResponseWithData(res, "Operation success", {proof});
