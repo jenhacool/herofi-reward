@@ -9,6 +9,6 @@ router.post("/get_proof", RewardController.getRewardProof);
 
 router.post("/get_proofs", RewardController.getRewardProofs);
 
-router.post("/root", RewardController.updateRewardRoot);
+// router.post("/root", RewardController.updateRewardRoot);
 
 module.exports = router;

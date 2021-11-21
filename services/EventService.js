@@ -3,75 +3,44 @@ const web3 = new Web3(new Web3.providers.HttpProvider(process.env.WEB3_PROVIDER)
 const Reward = require("../models/RewardModel");
 const Event = require("../models/EventModel");
 
-const rewardFreeContract = new web3.eth.Contract(
-	require("../abis/RewardFree.json"),
-	process.env.REWARD_FREE_CONTRACT
+const rewardContract = new web3.eth.Contract(
+	require("../abis/Reward.json"),
+	process.env.REWARD_CONTRACT
 );
 
-const rewardPremiumContract = new web3.eth.Contract(
-	require("../abis/RewardPremium.json"),
-	process.env.REWARD_PREMIUM_CONTRACT
-);
-
-const onRewardPremiumClaim = async function(event) {
+const onRewardClaim = async function(event) {
 	try {
 		let {blockNumber, transactionHash} = event;
-		let {user, reward, timestamp} = event.returnValues;
-		let filter = {
-			address: user,
-			reward: web3.utils.fromWei(reward, "ether"),
-			timestamp,
-			claimed: false
-		};
-		let data = await Reward.findOne({
-			address: user,
-			reward: web3.utils.fromWei(reward, "ether"),
-			timestamp,
-			claimed: false
-		});
-		if (!data) {
+		let {user, reward, timestamps} = event.returnValues;
+		
+		console.log(event.returnValues);
+
+		if (!timestamps) {
 			return;
 		}
-		let update = {
-			claimed: true, history: {blockNumber, transactionHash}
-		};
-		await Reward.findOneAndUpdate(filter, update);
-		console.log("Updated", user, reward, timestamp);
-	} catch(err) {
-		console.log(err);
-	}
-};
 
-const onRewardFreeClaim = async function(event) {
-	try {
-		let {blockNumber, transactionHash} = event;
-		let {user, reward, timestamp} = event.returnValues;
-		await Reward.updateMany({
-			address: user,
-			// reward: web3.utils.fromWei(reward, "ether"),
-			timestamp: {$gt: timestamp - (86400 * 10)},
-			claimed: false
-		}, {claimed: true, history: {blockNumber, transactionHash}})
-		// let filter = {
-		// 	address: user,
-		// 	// reward: web3.utils.fromWei(reward, "ether"),
-		// 	timestamp: {$gt: timestamp - (86400 * 10)},
-		// 	claimed: false
-		// };
-		// let data = await Reward.findOne({
-		// 	address: user,
-		// 	reward: web3.utils.fromWei(reward, "ether"),
-		// 	timestamp,
-		// 	claimed: false
-		// });
-		// if (!data) {
-		// 	return;
-		// }
-		// let update = {
-		// 	claimed: true, history: {blockNumber, transactionHash}
-		// };
-		// await Reward.findOneAndUpdate(filter, update);
-		console.log("Updated", user, reward, timestamp);
+		await Promise.all(timestamps.map(async (timestamp) => {
+			let filter = {
+				address: user,
+				// reward: web3.utils.fromWei(reward, "ether"),
+				timestamp,
+				claimed: false
+			};
+			let data = await Reward.findOne({
+				address: user,
+				// reward: web3.utils.fromWei(reward, "ether"),
+				timestamp,
+				claimed: false
+			});
+			if (!data) {
+				return;
+			}
+			let update = {
+				claimed: true, history: {blockNumber, transactionHash}
+			};
+			await Reward.findOneAndUpdate(filter, update);
+			console.log("Updated", user, reward, timestamp);
+		}));
 	} catch(err) {
 		console.log(err);
 	}
@@ -89,18 +58,15 @@ const listenEvents = async function() {
 	try {
 		let latestBlockNumber = await web3.eth.getBlockNumber();
 		if (latestBlockNumber - event.latestBlock > 5000) {
-			i = latestBlockNumber - 2;
+			// i = latestBlockNumber - 2;
+			latestBlockNumber = i + 5000;
 		}
-		console.log(i, latestBlockNumber);
+		console.log("event", i, latestBlockNumber);
 		if (i < latestBlockNumber) {
-			await Promise.all((await rewardFreeContract.getPastEvents("RewardClaim", {
+			await Promise.all((await rewardContract.getPastEvents("RewardClaim", {
 				fromBlock: i + 1,
 				toBlock: latestBlockNumber
-			})).map(onRewardFreeClaim));
-			await Promise.all((await rewardPremiumContract.getPastEvents('RewardClaim', {
-			  fromBlock: i + 1,
-			  toBlock: latestBlockNumber
-			})).map(onRewardPremiumClaim));
+			})).map(onRewardClaim));
 			await Event.findByIdAndUpdate(eventId, {latestBlock: latestBlockNumber}, {upsert: true});
 			i = latestBlockNumber;
 		}

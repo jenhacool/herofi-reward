@@ -15,54 +15,54 @@ const rewardContract = new web3.eth.Contract(
 );
 
 // Real data
-// const getRewardFromServer = async function(currentTime) {
-// 	try {
-// 		const response = await axios.get(`${process.env.GET_REWARD_API}&time=${currentTime}`);
-// 		const data = response.data.$values;
-
-// 		let users = data.map((user) => {
-// 			return {
-// 				timestamp: currentTime,
-// 				address: web3.utils.toChecksumAddress(user.walletId),
-// 				reward: user.reward,
-// 			};
-// 		});
-
-// 		await Reward.deleteMany({timestamp: currentTime});
-// 		await Reward.insertMany(users);
-
-// 		return users;
-// 	} catch(error) {
-// 		console.log(error);
-// 		return [];
-// 	}
-// };
-
-// Fake data
-const getRewardFromServer = async function (currentTime, reward) {
+const getRewardFromServer = async function(currentTime) {
 	try {
-		const users = [
-			{
-				address: "0x81F403fE697CfcF2c21C019bD546C6b36370458c",
-				reward: 1 * reward,
-				timestamp: currentTime
-			},
-			{
-				address: "0x05ea9701d37ca0db25993248e1d8461A8b50f24a",
-				reward: 1 * reward,
-				timestamp: currentTime
-			}
-		];
+		const response = await axios.get(`${process.env.GET_REWARD_API}&time=${currentTime}`);
+		const data = response.data.$values;
 
-		await Reward.deleteMany({ timestamp: currentTime });
+		let users = data.map((user) => {
+			return {
+				timestamp: currentTime,
+				address: web3.utils.toChecksumAddress(user.walletId),
+				reward: user.reward,
+			};
+		});
+
+		await Reward.deleteMany({timestamp: currentTime});
 		await Reward.insertMany(users);
 
 		return users;
-	} catch (error) {
+	} catch(error) {
 		console.log(error);
 		return [];
 	}
 };
+
+// Fake data
+// const getRewardFromServer = async function (currentTime, reward) {
+// 	try {
+// 		const users = [
+// 			{
+// 				address: "0x81F403fE697CfcF2c21C019bD546C6b36370458c",
+// 				reward: 1 * reward,
+// 				timestamp: currentTime
+// 			},
+// 			{
+// 				address: "0x05ea9701d37ca0db25993248e1d8461A8b50f24a",
+// 				reward: 1 * reward,
+// 				timestamp: currentTime
+// 			}
+// 		];
+
+// 		await Reward.deleteMany({ timestamp: currentTime });
+// 		await Reward.insertMany(users);
+
+// 		return users;
+// 	} catch (error) {
+// 		console.log(error);
+// 		return [];
+// 	}
+// };
 
 const updateRewardFreeRoot = async function (currentTime, data) {
 	try {
@@ -174,11 +174,12 @@ const resetRewardClaimedToday = async function () {
 	}
 };
 
-exports.updateRewardRoot = async function (currentTime, reward) {
+exports.updateRewardRoot = async function () {
 	try {
-		// const currentTime = Math.floor(Date.now() / 1000);
+		const currentTime = Math.floor(Date.now() / 1000);
 		// const currentData = await Reward.find();
-		const users = await getRewardFromServer(currentTime, reward);
+		const users = await getRewardFromServer(currentTime);
+		console.log(users.length);
 		// const newData = currentData.concat(users);
 		// await RewardDup.deleteMany();
 		// await RewardDup.insertMany(newData);

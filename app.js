@@ -57,25 +57,12 @@ app.use((err, req, res) => {
 	}
 });
 
-// (async function() {
-// 	await ProofService.updateRewardRoot(1635640000, 1);
-// 	await ProofService.updateRewardRoot(1635641000, 2);
-// 	await ProofService.updateRewardRoot(1635642000, 3);
-// 	await ProofService.updateRewardRoot(1635643000, 4);
-// 	await ProofService.updateRewardRoot(1635644000, 5);
-// 	await ProofService.updateRewardRoot(1635645000, 6);
-// 	await ProofService.updateRewardRoot(1635646000, 7);
-// 	await ProofService.updateRewardRoot(1635647000, 8);
-// 	await ProofService.updateRewardRoot(1635648000, 9);
-// 	await ProofService.updateRewardRoot(1635649000, 10);
-// })();
-
 // var job = new CronJob("0 1 * * *", function() {
 // 	ProofService.updateRewardRoot();
 // });
 
 // job.start();
 
-// listenEvents();
+listenEvents();
 
 module.exports = app;

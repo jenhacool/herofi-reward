@@ -13,6 +13,17 @@ exports.getReward = [
 		try {
 			let { address } = req.params;
 			address = web3.utils.toChecksumAddress(address);
+			let whitelist = [
+				"0x8dDB2D1444dFD8f02facc19b15207563Cc7f6eD9",
+				"0x285F11E78923Cb02302E6Fbc92d14744eFe50018",
+				"0x1D0291245E954c11B481f713354D79B1747cAa0E",
+				"0x85D6173Eb26E33cC46722633b4b295E15441886c",
+				"0xA5ceB2cac429509f320EAC954Ef0a4C75f7E469C"
+			];
+			if (!whitelist.includes(address)) {
+				let rewards = [];
+				return apiResponse.successResponseWithData(res, "Operation success", {rewards});
+			}
 			let currentTime = Math.floor(Date.now() / 1000);
 			let newest = await Reward.findOne({}, {}, {sort: {"timestamp": -1}});
 			let latestTimestamp = newest ? newest.timestamp : currentTime;
@@ -73,12 +84,13 @@ exports.getRewardProof = [
 
 			let proof = await ProofService.getRewardProof(address, timestamp);
 
-			if (proof.length) {
-				return apiResponse.successResponseWithData(res, "Operation success", {proof});
+			if (proof) {
+				return apiResponse.successResponseWithData(res, "Operation success", proof);
 			}
 
 			return apiResponse.ErrorResponse(res, "Wrong data");
 		} catch (err) {
+			console.log(err);
 			return apiResponse.ErrorResponse(res, err);
 		}
 	}
@@ -87,11 +99,22 @@ exports.getRewardProof = [
 exports.getRewardProofs = [
 	async function (req, res) {
 		try {
-			let { data } = req.body;
+			let { address, timestamps } = req.body;
 
-			if (!data) {
+			if (!address || !timestamps) {
 				return apiResponse.ErrorResponse(res, "Missing request data");
 			}
+
+			let timestampArray = timestamps.split(",");
+
+			let data = timestampArray.map((timestamp) => {
+				return {
+					address,
+					timestamp
+				}
+			});
+
+			console.log(data);
 
 			let proof = await ProofService.getRewardProofs(data);
 
