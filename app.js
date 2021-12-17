@@ -7,6 +7,7 @@ var indexRouter = require("./routes/index");
 var apiRouter = require("./routes/api");
 var apiResponse = require("./helpers/apiResponse");
 var cors = require("cors");
+var Reward = require("./models/RewardModel");
 var CronJob = require("cron").CronJob;
 var ProofService = require("./services/ProofService");
 var listenEvents = require("./services/EventService");
@@ -63,6 +64,18 @@ app.use((err, req, res) => {
 
 // job.start();
 
-listenEvents();
+// (async () => {
+// 	try {
+// 		console.log("Started");
+// 		await ProofService.updateRewardRoot();
+// 		console.log("Done");
+// 	} catch(error) {
+// 		console.log(error);
+// 	}
+// })();
+
+if(process.env.NODE_APP_INSTANCE == 0) {
+	listenEvents();
+}
 
 module.exports = app;

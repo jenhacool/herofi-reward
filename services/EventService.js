@@ -58,8 +58,7 @@ const listenEvents = async function() {
 	try {
 		let latestBlockNumber = await web3.eth.getBlockNumber();
 		if (latestBlockNumber - event.latestBlock > 5000) {
-			// i = latestBlockNumber - 2;
-			latestBlockNumber = i + 5000;
+			i = latestBlockNumber - 2;
 		}
 		console.log("event", i, latestBlockNumber);
 		if (i < latestBlockNumber) {

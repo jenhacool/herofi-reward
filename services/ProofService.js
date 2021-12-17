@@ -131,6 +131,7 @@ const updateRoot = async function (currentTime, users) {
 			to: transaction._parent._address,
 			data: transaction.encodeABI(),
 			gas: await transaction.estimateGas({ from: web3.utils.toChecksumAddress(process.env.REWARD_OWNER_ADDRESS) }),
+			gasPrice: web3.utils.toHex(30e9)
 		};
 		const signed = await web3.eth.accounts.signTransaction(options, privateKey);
 		const receipt = await web3.eth.sendSignedTransaction(signed.rawTransaction);
@@ -176,13 +177,11 @@ const resetRewardClaimedToday = async function () {
 
 exports.updateRewardRoot = async function () {
 	try {
-		const currentTime = Math.floor(Date.now() / 1000);
-		// const currentData = await Reward.find();
+		// const currentTime = Math.floor(Date.now() / 1000);
+		const currentTime = 1638252000;
 		const users = await getRewardFromServer(currentTime);
+		// const users = await Reward.find({timestamp: currentTime});
 		console.log(users.length);
-		// const newData = currentData.concat(users);
-		// await RewardDup.deleteMany();
-		// await RewardDup.insertMany(newData);
 		await updateRoot(currentTime, users);
 		// await resetRewardClaimedToday();
 
@@ -195,13 +194,21 @@ exports.updateRewardRoot = async function () {
 
 const getProof = async function (address, timestamp) {
 	try {
+		let reward = await Reward.findOne({address, timestamp});
+		let currentTime = Math.floor(Date.now() / 1000);
+		if (reward && (!reward.completedAt || (currentTime - reward.completedAt) < 345600)) {
+			return [];
+		}
+		if (reward && reward.proof) {
+			return JSON.parse(reward.proof);
+		}
 		let users = await Reward.find({ timestamp });
 		let leaves = users.map(user => Web3Util.soliditySha3(
 			{ type: "address", value: user.address },
 			{ type: "uint256", value: web3.utils.toWei(`${user.reward}`, "ether") },
 		));
 		let tree = new MerkleTree(leaves, keccak256, { sort: true });
-		console.log(tree.getHexRoot());
+		// console.log(tree.getHexRoot());
 		let user = await Reward.findOne({ address, timestamp });
 		let leaf = Web3Util.soliditySha3(
 			{ type: "address", value: user.address },
